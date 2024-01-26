@@ -69,14 +69,14 @@ export default {
       }, (rsp) => {
         if(rsp.success){
           let data = {
-            imp_uid: rsp.imp_uid,
+            impUid: rsp.imp_uid,
             userId: this.userId,
             restaurantId: this.restaurantId,
             size: this.size,
             startDate: this.startDate,
             endDate: this.endDate,
             regularPrice: this.regularPrice,
-            paymentAmount: rsp.paid_amount,
+            paymentAmount: this.paymentAmount,
             menuList:this.menuList
           };
         axios.post('/api/reservations', data, 
@@ -84,18 +84,33 @@ export default {
             Authorization: `BEARER ` + process.env.VUE_APP_TEMP_TOKEN
           }
           }).then( res => {
-            data.boardList = res.data;
+              console.log("DB 저장 성공", res);
+
+            if(res.code == 63003) {
+              console.log("iamport 결제 API 실패");
+            } else if(res.code == 63004){
+              console.log("검증 실패");
+              this.canclePaymentsForFail(data);
+            } 
           }).catch(e =>{
-            console.log("서버 검증 or 등록 실패", e);
-            //아임포트 취소 로직 필요
+            console.log(e);
+            console.log(e.response.data.code);
           })
-          console.log("성공");
-          console.log(this.paymentAmount);
         }else{
-          console.log("실패");
-          console.log(this.paymentAmount);
+          console.log("iamport 결제 API 실패");
         }
       });
+    },
+    canclePaymentsForFail(data){ 
+        axios.patch('/api/reservations/fail-and-refund', data, 
+        {headers: {
+            Authorization: `BEARER ` + process.env.VUE_APP_TEMP_TOKEN
+        }
+        }).then( res => {
+          console.log("검증 실패 후 환불된 경우", res);
+        }).catch(e => {
+          console.log("검증 실패 후 환불 안된 경우", e);
+        })
     }
   }
 }
